@@ -17,12 +17,8 @@ from hashlib import md5
 # rtm constant
 from .consts import *
 
-try:  # Python 3
-    from urllib.request import urlopen
-    from urllib.parse import urlencode
-except ImportError:  # Python 2.x
-    from urllib import urlencode, urlopen
-    input = raw_input
+from urllib.request import urlopen
+from urllib.parse import urlencode
 
 logging.basicConfig()
 LOG = logging.getLogger(__name__)
