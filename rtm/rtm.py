@@ -175,38 +175,6 @@ def openURL(url, queryArgs=None):
     LOG.debug("URL> %s", url)
     return urlopen(url)
 
-class dottedDict(object):
-    """Make dictionary items accessible via the object-dot notation."""
-
-    def __init__(self, name, dictionary):
-        self._name = name
-
-        if type(dictionary) is dict:
-            for key, value in dictionary.items():
-                if type(value) is dict:
-                    value = dottedDict(key, value)
-                elif type(value) in (list, tuple) and key != 'tag':
-                    value = [dottedDict('%s_%d' % (key, i), item)
-                             for i, item in indexed(value)]
-                setattr(self, key, value)
-        else:
-            raise ValueError('not a dict: %s' % dictionary)
-
-    def __repr__(self):
-        children = [c for c in dir(self) if not c.startswith('_')]
-        return 'dotted <%s> : %s' % (
-            self._name,
-            ', '.join(children))
-
-def indexed(seq):
-    """
-    >>> list(indexed(['a', 'b', 'c']))
-    [(0, 'a'), (1, 'b'), (2, 'c')]
-    """
-    index = 0
-    for item in seq:
-        yield index, item
-        index += 1
 
 def createRTM(apiKey, secret, token=None):
     rtm = RTM(apiKey, secret, token)
