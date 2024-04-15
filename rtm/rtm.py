@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Python library for Remember The Milk API
 
 __author__ = 'Sridhar Ratnakumar <http://purl.org/NET/srid/>'
@@ -12,13 +11,12 @@ __all__ = (
 
 import json
 import logging
+import requests
+import warnings
 from hashlib import md5
 
 # rtm constant
-from .consts import *
-
-from urllib.request import urlopen
-from urllib.parse import urlencode
+from .consts import SERVICE_URL, AUTH_SERVICE_URL, API, API_RESPONSE
 
 logging.basicConfig()
 LOG = logging.getLogger(__name__)
@@ -69,23 +67,23 @@ class RTM(object):
         return md5((self.secret + pairs).encode('utf-8')).hexdigest()
 
     def get(self, **params):
-        "Get the XML response for the passed `params`."
+        "Get the JSON response for the passed `params`."
         params['api_key'] = self.apiKey
         params['format'] = 'json'
         params['api_sig'] = self._sign(params)
 
-        data = openURL(SERVICE_URL, params).read()
+        data = requests.get(SERVICE_URL, params)
 
-        LOG.debug("JSON response: \n%s" % data)
+        # LOG.debug("JSON response: \n%s" % data)
 
-        d = dottedDict('ROOT', json.loads(data.decode('utf-8')))
-        rsp = d.rsp
+        # d = dottedDict('ROOT', json.loads(data.decode('utf-8')))
+        # rsp = d.rsp
 
-        if rsp.stat == 'fail':
-            raise RTMAPIError('API call failed - %s (%s)' % (
-                rsp.err.msg, rsp.err.code))
-        else:
-            return rsp
+        # if rsp.stat == 'fail':
+        #     raise RTMAPIError('API call failed - %s (%s)' % (
+        #         rsp.err.msg, rsp.err.code))
+        # else:
+        #     return rsp
 
     def getNewFrob(self):
         rsp = self.get(method='rtm.auth.getFrob')
