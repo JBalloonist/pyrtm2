@@ -71,19 +71,8 @@ class RTM(object):
         params['api_key'] = self.apiKey
         params['format'] = 'json'
         params['api_sig'] = self._sign(params)
+        return requests.get(SERVICE_URL, params)
 
-        data = requests.get(SERVICE_URL, params)
-
-        # LOG.debug("JSON response: \n%s" % data)
-
-        # d = dottedDict('ROOT', json.loads(data.decode('utf-8')))
-        # rsp = d.rsp
-
-        # if rsp.stat == 'fail':
-        #     raise RTMAPIError('API call failed - %s (%s)' % (
-        #         rsp.err.msg, rsp.err.code))
-        # else:
-        #     return rsp
 
     def getNewFrob(self):
         rsp = self.get(method='rtm.auth.getFrob')
@@ -102,7 +91,8 @@ class RTM(object):
             'frob': frob
         }
         params['api_sig'] = self._sign(params)
-        return AUTH_SERVICE_URL + '?' + urlencode(params)
+        encoded = requests.utils.requote_uri(params)
+        return f'{AUTH_SERVICE_URL}?{encoded}'
 
     def getToken(self):
         frob = self.authInfo.get('frob')
@@ -169,7 +159,7 @@ def openURL(url, queryArgs=None):
     'https://www.rememberthemilk.com/?query=test'
     """
     if queryArgs:
-        url = url + '?' + urlencode(queryArgs)
+        url = f'{url}?{requests.utils.requote_uri(queryArgs)}
     LOG.debug("URL> %s", url)
     return urlopen(url)
 
