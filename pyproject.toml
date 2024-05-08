@@ -8,3 +8,7 @@ version = "2024.5"
 dependencies = [
     "requests>2.6.2"
 ]
+requires-python = ">3.8"
+
+[tool.setuptools]
+py-modules = ["rtm"]
