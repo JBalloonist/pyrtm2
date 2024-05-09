@@ -12,3 +12,6 @@ requires-python = ">3.8"
 
 [tool.setuptools]
 py-modules = ["rtm"]
+
+[project.urls]
+Homepage = "https://github.com/jballoonist/pyrtm2
