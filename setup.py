@@ -72,7 +72,7 @@ setup(
     # by commas, to be used to assist searching for the distribution in a
     # larger catalog.
 
-    packages=find_packages(where="rtm"),  # Required
+    packages=find_packages(),  # Required
     # Specify which Python versions you support. In contrast to the
     # 'Programming Language' classifiers above, 'pip install' will check this
     # and refuse to install the project if the version does not match. See
@@ -84,4 +84,7 @@ setup(
     #
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/discussions/install-requires-vs-requirements/
+    install_requires=[
+        'requests'
+    ]
 )
