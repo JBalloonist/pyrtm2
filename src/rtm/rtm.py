@@ -26,7 +26,7 @@ class RTMError(Exception): pass
 
 class RTMAPIError(RTMError): pass
 
-class AuthStateMachine(object):
+class AuthStateMachine:
 
     class NoData(RTMError): pass
 
@@ -36,17 +36,17 @@ class AuthStateMachine(object):
 
     def dataReceived(self, state, datum):
         if state not in self.states:
-            raise RTMError('Invalid state <%s>' % state)
+            raise RTMError(f'Invalid state <{state}>')
         self.data[state] = datum
 
     def get(self, state):
         if state in self.data:
             return self.data[state]
         else:
-            raise AuthStateMachine.NoData('No data for <%s>' % state)
+            raise AuthStateMachine.NoData(f'No data for <{state}>')
 
 
-class RTM(object):
+class RTM:
 
     def __init__(self, apiKey, secret, token=None):
         self.apiKey = apiKey
@@ -61,12 +61,12 @@ class RTM(object):
             self.authInfo.dataReceived('token', token)
 
     def _sign(self, params):
-        "Sign the parameters with MD5 hash"
-        pairs = ''.join(['%s%s' % (k, v) for k, v in sortedItems(params)])
+        """Sign the parameters with MD5 hash"""
+        pairs = ''.join(f'{k}{v}' for k, v in sortedItems(params))
         return md5((self.secret + pairs).encode('utf-8')).hexdigest()
 
     def get(self, **params):
-        "Get the JSON response for the passed `params`."
+        """Get the JSON response for the passed `params`."""
         params['api_key'] = self.apiKey
         params['format'] = 'json'
         # The api_sig MUST be calculated AFTER api_key and format are added
@@ -123,7 +123,7 @@ class RTM(object):
             raise RTMAPIError("Failed to get token")
 
 class RTMAPICategory:
-    "See the `API` structure and `RTM.__init__`"
+    """See the `API` structure and `RTM.__init__`"""
 
     def __init__(self, rtm, prefix, methods):
         self.rtm = rtm
@@ -134,24 +134,23 @@ class RTMAPICategory:
         if attr in self.methods:
             rargs, oargs = self.methods[attr]
             if self.prefix == 'tasksNotes':
-                aname = 'rtm.tasks.notes.%s' % attr
+                aname = f'rtm.tasks.notes.{attr}'
             else:
-                aname = 'rtm.%s.%s' % (self.prefix, attr)
+                aname = f'rtm.{self.prefix}.{attr}'
             return lambda **params: self.callMethod(
                 aname, rargs, oargs, **params)
         else:
-            raise AttributeError('No such attribute: %s' % attr)
+            raise AttributeError(f'No such attribute: {attr}')
 
     def callMethod(self, aname, rargs, oargs, **params):
         # Sanity checks
         for requiredArg in rargs:
             if requiredArg not in params:
-                raise TypeError('Required parameter (%s) missing' % (
-                                requiredArg))
+                raise TypeError(f'Required parameter ({requiredArg}) missing')
 
         for param in params:
             if param not in list(rargs) + list(oargs):
-                warnings.warn('Invalid parameter (%s)' % param)
+                warnings.warn(f'Invalid parameter ({param})')
 
         try:
             token = self.rtm.authInfo.get('token')
@@ -175,10 +174,7 @@ def sortedItems(dictionary):
     >>> list(sortedItems({'a': 1, 1: 55, 'key': 7}))
     [(1, 55), ('a', 1), ('key', 7)]
     """
-    keys = list(dictionary.keys())
-    keys.sort(key=str)
-    for key in keys:
-        yield key, dictionary[key]
+    yield from sorted(dictionary.items(), key=lambda item: str(item[0]))
 
 
 def createRTM(apiKey, secret, token=None):
