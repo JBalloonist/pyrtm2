@@ -8,12 +8,11 @@ __all__ = (
     'set_log_level',
 )
 
-
 import json
 import logging
-import requests
 import warnings
 from hashlib import md5
+import requests
 
 # rtm constant
 from .consts import SERVICE_URL, AUTH_SERVICE_URL, API, API_RESPONSE
@@ -70,14 +69,31 @@ class RTM(object):
         "Get the JSON response for the passed `params`."
         params['api_key'] = self.apiKey
         params['format'] = 'json'
+        # The api_sig MUST be calculated AFTER api_key and format are added
         params['api_sig'] = self._sign(params)
-        return requests.get(SERVICE_URL, params)
-
+        
+        response = requests.get(SERVICE_URL, params=params)
+        response.raise_for_status()
+        
+        data = response.json()
+        
+        if 'rsp' in data:
+            rsp = data['rsp']
+            if rsp.get('stat') == 'fail':
+                err = rsp.get('err', {})
+                raise RTMAPIError(f"API Error {err.get('code')}: {err.get('msg')}")
+            return rsp
+            
+        return data
 
     def getNewFrob(self):
         rsp = self.get(method='rtm.auth.getFrob')
-        self.authInfo.dataReceived('frob', rsp.frob)
-        return rsp.frob
+        try:
+            frob = rsp['frob']
+            self.authInfo.dataReceived('frob', frob)
+            return frob
+        except KeyError:
+            raise RTMAPIError("Failed to get new frob")
 
     def getAuthURL(self):
         try:
@@ -91,14 +107,20 @@ class RTM(object):
             'frob': frob
         }
         params['api_sig'] = self._sign(params)
-        encoded = requests.utils.requote_uri(params)
-        return f'{AUTH_SERVICE_URL}?{encoded}'
+        
+        req = requests.models.PreparedRequest()
+        req.prepare_url(AUTH_SERVICE_URL, params)
+        return req.url
 
     def getToken(self):
         frob = self.authInfo.get('frob')
         rsp = self.get(method='rtm.auth.getToken', frob=frob)
-        self.authInfo.dataReceived('token', rsp.auth.token)
-        return rsp.auth.token
+        try:
+            token = rsp['auth']['token']
+            self.authInfo.dataReceived('token', token)
+            return token
+        except KeyError:
+            raise RTMAPIError("Failed to get token")
 
 class RTMAPICategory:
     "See the `API` structure and `RTM.__init__`"
@@ -128,15 +150,22 @@ class RTMAPICategory:
                                 requiredArg))
 
         for param in params:
-            if param not in rargs + oargs:
+            if param not in list(rargs) + list(oargs):
                 warnings.warn('Invalid parameter (%s)' % param)
 
-        token = self.rtm.authInfo.get('token')
+        try:
+            token = self.rtm.authInfo.get('token')
+        except AuthStateMachine.NoData:
+            token = None
+            
         if params.get('auth_token'):
             # auth.checkToken api needs auth_token parameter
             token = params.pop('auth_token')
-
-        return self.rtm.get(method=aname, auth_token=token, **params)
+            
+        if token:
+            return self.rtm.get(method=aname, auth_token=token, **params)
+        else:
+            return self.rtm.get(method=aname, **params)
 
 
 # Utility functions
@@ -151,27 +180,15 @@ def sortedItems(dictionary):
     for key in keys:
         yield key, dictionary[key]
 
-def openURL(url, queryArgs=None):
-    """
-    >>> q = {'query': 'test'}
-    >>> r = openURL('https://www.rememberthemilk.com/', q)
-    >>> r.geturl()
-    'https://www.rememberthemilk.com/?query=test'
-    """
-    if queryArgs:
-        url = f'{url}?{requests.utils.requote_uri(queryArgs)}
-    LOG.debug("URL> %s", url)
-    return urlopen(url)
-
 
 def createRTM(apiKey, secret, token=None):
     rtm = RTM(apiKey, secret, token)
 
     if token is None:
         print('No token found')
-        print('Give me access here: {0}'.format(rtm.getAuthURL()))
+        print(f'Give me access here: {rtm.getAuthURL()}')
         input('Press enter once you gave access')
-        print('Note this token for future use: {0}'.format(rtm.getToken()))
+        print(f'Note this token for future use: {rtm.getToken()}')
 
     return rtm
 
@@ -182,5 +199,4 @@ def set_log_level(level):
     >>> import logging
     >>> rtm.set_log_level(logging.INFO)
     '''
-
     LOG.setLevel(level)
