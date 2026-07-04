@@ -9,18 +9,16 @@ __all__ = (
 )
 
 
-import json
 import logging
 import requests
 import warnings
 from hashlib import md5
+from urllib.parse import urlencode
 
 # rtm constant
 from .consts import SERVICE_URL, AUTH_SERVICE_URL, API, API_RESPONSE
 
-logging.basicConfig()
 LOG = logging.getLogger(__name__)
-LOG.setLevel(logging.INFO)
 
 
 class RTMError(Exception): pass
@@ -67,17 +65,27 @@ class RTM(object):
         return md5((self.secret + pairs).encode('utf-8')).hexdigest()
 
     def get(self, **params):
-        "Get the JSON response for the passed `params`."
+        "Get the parsed JSON response for the passed `params`."
         params['api_key'] = self.apiKey
         params['format'] = 'json'
         params['api_sig'] = self._sign(params)
-        return requests.get(SERVICE_URL, params)
 
+        response = requests.get(SERVICE_URL, params=params, timeout=30)
+        response.raise_for_status()
+
+        LOG.debug("JSON response: \n%s", response.text)
+
+        rsp = response.json()['rsp']
+        if rsp['stat'] == 'fail':
+            err = rsp['err']
+            raise RTMAPIError('API call failed - %s (%s)' % (
+                err['msg'], err['code']))
+        return rsp
 
     def getNewFrob(self):
         rsp = self.get(method='rtm.auth.getFrob')
-        self.authInfo.dataReceived('frob', rsp.frob)
-        return rsp.frob
+        self.authInfo.dataReceived('frob', rsp['frob'])
+        return rsp['frob']
 
     def getAuthURL(self):
         try:
@@ -91,14 +99,13 @@ class RTM(object):
             'frob': frob
         }
         params['api_sig'] = self._sign(params)
-        encoded = requests.utils.requote_uri(params)
-        return f'{AUTH_SERVICE_URL}?{encoded}'
+        return f'{AUTH_SERVICE_URL}?{urlencode(params)}'
 
     def getToken(self):
         frob = self.authInfo.get('frob')
         rsp = self.get(method='rtm.auth.getToken', frob=frob)
-        self.authInfo.dataReceived('token', rsp.auth.token)
-        return rsp.auth.token
+        self.authInfo.dataReceived('token', rsp['auth']['token'])
+        return rsp['auth']['token']
 
 class RTMAPICategory:
     "See the `API` structure and `RTM.__init__`"
@@ -150,19 +157,6 @@ def sortedItems(dictionary):
     keys.sort(key=str)
     for key in keys:
         yield key, dictionary[key]
-
-def openURL(url, queryArgs=None):
-    """
-    >>> q = {'query': 'test'}
-    >>> r = openURL('https://www.rememberthemilk.com/', q)
-    >>> r.geturl()
-    'https://www.rememberthemilk.com/?query=test'
-    """
-    if queryArgs:
-        url = f'{url}?{requests.utils.requote_uri(queryArgs)}
-    LOG.debug("URL> %s", url)
-    return urlopen(url)
-
 
 def createRTM(apiKey, secret, token=None):
     rtm = RTM(apiKey, secret, token)

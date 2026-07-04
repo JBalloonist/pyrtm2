@@ -1,20 +1,11 @@
-# -*- coding: utf-8 -*-
-
 import os
-import sys
-from operator import attrgetter
+from configparser import RawConfigParser
 from os.path import dirname, join as pathjoin, realpath
-from nose.plugins.skip import SkipTest
-from nose.tools import *
 
-try:
-    from ConfigParser import RawConfigParser
-except ImportError:
-    from configparser import RawConfigParser
+import pytest
 
 import rtm.rtm as RTM
 
-# constant for test
 KEY_TXT = pathjoin(dirname(realpath(__file__)), 'apikey.txt')
 KEY_TXT_FORMAT = """
 The format are(ConfigParser readable):
@@ -25,23 +16,54 @@ token: zzz
 """
 
 
-class TestRTM(object):
+class TestRTMOffline:
+    """Tests that exercise the client without hitting the live API."""
+
+    def setup_method(self):
+        self.rtm = RTM.RTM('apikey', 'secret', token='token')
+
+    def test_sign_is_deterministic(self):
+        params = {'method': 'rtm.test.echo', 'api_key': 'apikey'}
+        assert self.rtm._sign(params) == self.rtm._sign(dict(params))
+
+    def test_get_auth_url_contains_frob(self):
+        self.rtm.authInfo.dataReceived('frob', 'my-frob')
+        url = self.rtm.getAuthURL()
+        assert url.startswith(RTM.AUTH_SERVICE_URL)
+        assert 'frob=my-frob' in url
+
+    def test_unknown_method_raises_attribute_error(self):
+        with pytest.raises(AttributeError):
+            self.rtm.tasks.notAMethod()
+
+    def test_missing_required_param_raises_type_error(self):
+        with pytest.raises(TypeError):
+            self.rtm.tasks.add()
+
+
+class TestRTM:
+    """Tests that call the live Remember The Milk API.
+
+    Requires an `apikey.txt` file next to this module, readable by
+    `configparser.RawConfigParser`:
+
+        [rtm]
+        apikey: xxx
+        secret: yyy
+        token: zzz
+    """
 
     message = {
-        'skip': '\n\n'
-                'Set your API key "%s" to run TestRTM for authentication\n'
-                '%s' % (KEY_TXT, KEY_TXT_FORMAT),
-        'cannot_read': '\n\n'
-                       'Cannot read "%s"\n'
-                       '%s' % (KEY_TXT, KEY_TXT_FORMAT),
-        'no_item': '\n\n'
-                   'rtm.%s.%s: Cannot get response item, '
+        'skip': f'\n\nSet your API key "{KEY_TXT}" to run TestRTM for '
+                f'authentication\n{KEY_TXT_FORMAT}',
+        'cannot_read': f'\n\nCannot read "{KEY_TXT}"\n{KEY_TXT_FORMAT}',
+        'no_item': 'rtm.%s.%s: Cannot get response item, '
                    'maybe there is no item\n',
     }
 
-    def setup(self):
+    def setup_method(self):
         if not os.access(KEY_TXT, os.R_OK):
-            raise SkipTest(self.message['skip'])
+            pytest.skip(self.message['skip'])
         self.read_key_txt()
         self.rtm = RTM.createRTM(self.apikey, self.secret, self.token)
 
@@ -53,51 +75,41 @@ class TestRTM(object):
             self.secret = c.get('rtm', 'secret')
             self.token = c.get('rtm', 'token')
         except Exception as err:
-            sys.stderr.write(err + "\n")
-            raise SkipTest(self.message['cannot_read'])
+            pytest.skip(self.message['cannot_read'] + str(err))
 
-    def assert_stat_ok(self, rsp):
-        assert_equal("ok", rsp.stat)
-
-    def assert_response(self, func, elem=None, **params):
-        """assert the stat/attr(only top) of response from api"""
-        if hasattr(func, "func_name"):
-            func_name = func.func_name
-        else:
-            func_name = func.__name__
+    def assert_response(self, func_name, elem=None, **params):
+        """Assert the stat/attr(only top) of response from api"""
         api, method = func_name.replace('test_', '').split('_')
         elem = elem or api
-        api_method = "%s.%s" % (api, method)
-        rsp = attrgetter(api_method)(self.rtm)(**params)
-        self.assert_stat_ok(rsp)  # response is ok
+        rsp = getattr(getattr(self.rtm, api), method)(**params)
+        assert rsp['stat'] == 'ok'
 
-        rsp_attr = getattr(rsp, api)
-        if not isinstance(rsp_attr, RTM.dottedDict):
-            raise SkipTest(self.message['no_item'] % (api, method))
-        attr = list(RTM.API_RESPONSE[api][method][elem].keys())[0]
-        assert_true(hasattr(rsp_attr, attr))  # has item
+        rsp_attr = rsp.get(api)
+        if not isinstance(rsp_attr, dict):
+            pytest.skip(self.message['no_item'] % (api, method))
+        attr = next(iter(RTM.API_RESPONSE[api][method][elem]))
+        assert attr in rsp_attr
 
     def test_auth_checkToken(self):
-        params = {'auth_token': self.token}
-        self.assert_response(self.test_auth_checkToken, **params)
+        self.assert_response('test_auth_checkToken', auth_token=self.token)
 
     def test_contacts_getList(self):
-        self.assert_response(self.test_contacts_getList)
+        self.assert_response('test_contacts_getList')
 
     def test_groups_getList(self):
-        self.assert_response(self.test_groups_getList)
+        self.assert_response('test_groups_getList')
 
     def test_lists_getList(self):
-        self.assert_response(self.test_lists_getList)
+        self.assert_response('test_lists_getList')
 
     def test_locations_getList(self):
-        self.assert_response(self.test_locations_getList)
+        self.assert_response('test_locations_getList')
 
     def test_settings_getList(self):
-        self.assert_response(self.test_settings_getList)
+        self.assert_response('test_settings_getList')
 
     def test_tasks_getList(self):
-        self.assert_response(self.test_tasks_getList, 'lists')
+        self.assert_response('test_tasks_getList', 'lists')
 
     def test_timezones_getList(self):
-        self.assert_response(self.test_timezones_getList)
+        self.assert_response('test_timezones_getList')
