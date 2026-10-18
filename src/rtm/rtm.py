@@ -1,32 +1,25 @@
-# -*- coding: utf-8 -*-
 # Python library for Remember The Milk API
 
 __author__ = 'Sridhar Ratnakumar <http://purl.org/NET/srid/>'
 __all__ = (
     'API',
     'API_RESPONSE',
+    'as_list',
     'createRTM',
     'set_log_level',
 )
 
 
-import json
 import logging
+import requests
+import warnings
 from hashlib import md5
+from urllib.parse import urlencode
 
 # rtm constant
-from .consts import *
+from .consts import SERVICE_URL, AUTH_SERVICE_URL, API, API_RESPONSE
 
-try:  # Python 3
-    from urllib.request import urlopen
-    from urllib.parse import urlencode
-except ImportError:  # Python 2.x
-    from urllib import urlencode, urlopen
-    input = raw_input
-
-logging.basicConfig()
 LOG = logging.getLogger(__name__)
-LOG.setLevel(logging.INFO)
 
 
 class RTMError(Exception): pass
@@ -59,6 +52,8 @@ class RTM(object):
         self.apiKey = apiKey
         self.secret = secret
         self.authInfo = AuthStateMachine(['frob', 'token'])
+        # reuse one connection across calls instead of reconnecting each time
+        self.session = requests.Session()
 
         # this enables one to do 'rtm.tasks.getList()', for example
         for prefix, methods in API.items():
@@ -73,28 +68,30 @@ class RTM(object):
         return md5((self.secret + pairs).encode('utf-8')).hexdigest()
 
     def get(self, **params):
-        "Get the XML response for the passed `params`."
+        "Get the parsed JSON response for the passed `params`."
         params['api_key'] = self.apiKey
         params['format'] = 'json'
+        params['v'] = '2'
         params['api_sig'] = self._sign(params)
 
-        data = openURL(SERVICE_URL, params).read()
+        # POST keeps the api key and token out of the URL, so they don't
+        # show up in HTTPError messages or server logs
+        response = self.session.post(SERVICE_URL, data=params, timeout=30)
+        response.raise_for_status()
 
-        LOG.debug("JSON response: \n%s" % data)
+        LOG.debug("JSON response: \n%s", response.text)
 
-        d = dottedDict('ROOT', json.loads(data.decode('utf-8')))
-        rsp = d.rsp
-
-        if rsp.stat == 'fail':
+        rsp = response.json()['rsp']
+        if rsp['stat'] == 'fail':
+            err = rsp['err']
             raise RTMAPIError('API call failed - %s (%s)' % (
-                rsp.err.msg, rsp.err.code))
-        else:
-            return rsp
+                err['msg'], err['code']))
+        return rsp
 
     def getNewFrob(self):
         rsp = self.get(method='rtm.auth.getFrob')
-        self.authInfo.dataReceived('frob', rsp.frob)
-        return rsp.frob
+        self.authInfo.dataReceived('frob', rsp['frob'])
+        return rsp['frob']
 
     def getAuthURL(self):
         try:
@@ -108,13 +105,13 @@ class RTM(object):
             'frob': frob
         }
         params['api_sig'] = self._sign(params)
-        return AUTH_SERVICE_URL + '?' + urlencode(params)
+        return f'{AUTH_SERVICE_URL}?{urlencode(params)}'
 
     def getToken(self):
         frob = self.authInfo.get('frob')
         rsp = self.get(method='rtm.auth.getToken', frob=frob)
-        self.authInfo.dataReceived('token', rsp.auth.token)
-        return rsp.auth.token
+        self.authInfo.dataReceived('token', rsp['auth']['token'])
+        return rsp['auth']['token']
 
 class RTMAPICategory:
     "See the `API` structure and `RTM.__init__`"
@@ -167,50 +164,21 @@ def sortedItems(dictionary):
     for key in keys:
         yield key, dictionary[key]
 
-def openURL(url, queryArgs=None):
+def as_list(value):
+    """ Normalise an RTM response container to a list.
+    RTM returns one item as a dict, several as a list and none as [] or None.
+    >>> as_list({'id': '1'})
+    [{'id': '1'}]
+    >>> as_list([{'id': '1'}, {'id': '2'}])
+    [{'id': '1'}, {'id': '2'}]
+    >>> as_list(None)
+    []
     """
-    >>> q = {'query': 'test'}
-    >>> r = openURL('https://www.rememberthemilk.com/', q)
-    >>> r.geturl()
-    'https://www.rememberthemilk.com/?query=test'
-    """
-    if queryArgs:
-        url = url + '?' + urlencode(queryArgs)
-    LOG.debug("URL> %s", url)
-    return urlopen(url)
-
-class dottedDict(object):
-    """Make dictionary items accessible via the object-dot notation."""
-
-    def __init__(self, name, dictionary):
-        self._name = name
-
-        if type(dictionary) is dict:
-            for key, value in dictionary.items():
-                if type(value) is dict:
-                    value = dottedDict(key, value)
-                elif type(value) in (list, tuple) and key != 'tag':
-                    value = [dottedDict('%s_%d' % (key, i), item)
-                             for i, item in indexed(value)]
-                setattr(self, key, value)
-        else:
-            raise ValueError('not a dict: %s' % dictionary)
-
-    def __repr__(self):
-        children = [c for c in dir(self) if not c.startswith('_')]
-        return 'dotted <%s> : %s' % (
-            self._name,
-            ', '.join(children))
-
-def indexed(seq):
-    """
-    >>> list(indexed(['a', 'b', 'c']))
-    [(0, 'a'), (1, 'b'), (2, 'c')]
-    """
-    index = 0
-    for item in seq:
-        yield index, item
-        index += 1
+    if not value:
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
 
 def createRTM(apiKey, secret, token=None):
     rtm = RTM(apiKey, secret, token)

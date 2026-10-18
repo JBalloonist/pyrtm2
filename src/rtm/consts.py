@@ -21,18 +21,6 @@ API = {
         'getList':
             [(), ()]
     },
-    'groups': {
-        'add':
-            [('timeline', 'group'), ()],
-        'addContact':
-            [('timeline', 'group_id', 'contact_id'), ()],
-        'delete':
-            [('timeline', 'group_id'), ()],
-        'getList':
-            [(), ()],
-        'removeContact':
-            [('timeline', 'group_id', 'contact_id'), ()],
-    },
     'lists': {
         'add':
             [('timeline', 'name',), ('filter',)],
@@ -43,15 +31,26 @@ API = {
         'getList':
             [(), ()],
         'setDefaultList':
-            [('timeline'), ('list_id')],
+            [('timeline',), ('list_id',)],
         'setName':
             [('timeline', 'list_id', 'name'), ()],
         'unarchive':
-            [('timeline',), ('list_id',)]
+            [('timeline', 'list_id'), ()]
     },
     'locations': {
         'getList':
             [(), ()]
+    },
+    'push': {
+        'getSubscriptions':
+            [(), ()],
+        'getTopics':
+            [(), ()],
+        'subscribe':
+            [('timeline', 'url', 'topics', 'push_format'),
+             ('lease_seconds', 'filter')],
+        'unsubscribe':
+            [('timeline', 'subscription_id'), ()]
     },
     'reflection': {
         'getMethodInfo':
@@ -59,13 +58,35 @@ API = {
         'getMethods':
             [(), ()]
     },
+    'scripts': {
+        'add':
+            [('timeline', 'name', 'code'), ('script_params',)],
+        'delete':
+            [('timeline', 'script_id'), ()],
+        'getList':
+            [(), ('name',)],
+        'run':
+            [('timeline', 'script_id'), ('script_params',)],
+        'setCode':
+            [('timeline', 'script_id', 'code'), ()],
+        'setName':
+            [('timeline', 'script_id', 'name'), ()],
+        'setParams':
+            [('timeline', 'script_id'), ('script_params',)]
+    },
     'settings': {
+        'getList':
+            [(), ()]
+    },
+    'tags': {
         'getList':
             [(), ()]
     },
     'tasks': {
         'add':
-            [('timeline', 'name',), ('list_id', 'parse',)],
+            [('timeline', 'name',),
+             ('list_id', 'parse', 'parent_task_id', 'external_id',
+              'give_to')],
         'addTags':
             [('timeline', 'list_id', 'taskseries_id', 'task_id', 'tags'),
              ()],
@@ -75,7 +96,7 @@ API = {
             [('timeline', 'list_id', 'taskseries_id', 'task_id'), ()],
         'getList':
             [(),
-             ('list_id', 'filter', 'last_sync')],
+             ('list_id', 'filter', 'last_sync', 'callback')],
         'movePriority':
             [('timeline', 'list_id', 'taskseries_id', 'task_id', 'direction'),
              ()],
@@ -101,12 +122,18 @@ API = {
         'setName':
             [('timeline', 'list_id', 'taskseries_id', 'task_id', 'name'),
              ()],
+        'setParentTask':
+            [('timeline', 'list_id', 'taskseries_id', 'task_id'),
+             ('parent_task_id',)],
         'setPriority':
             [('timeline', 'list_id', 'taskseries_id', 'task_id'),
              ('priority',)],
         'setRecurrence':
             [('timeline', 'list_id', 'taskseries_id', 'task_id'),
              ('repeat',)],
+        'setStartDate':
+            [('timeline', 'list_id', 'taskseries_id', 'task_id'),
+             ('start', 'has_start_time', 'parse')],
         'setTags':
             [('timeline', 'list_id', 'taskseries_id', 'task_id'),
              ('tags',)],
@@ -134,7 +161,7 @@ API = {
     },
     'time': {
         'convert':
-            [('to_timezone',), ('from_timezone', 'to_timezone', 'time')],
+            [('to_timezone',), ('from_timezone', 'time')],
         'parse':
             [('text',), ('timezone', 'dateformat')]
     },
@@ -159,82 +186,82 @@ _LIST_COMMON = {
              'position', 'smart'],
 }
 
+_TASKSERIES_FIELDS = ['created', 'id', 'location_id', 'modified', 'name',
+                      'parent_task_id', 'source', 'url']
+
+_TASK_FIELDS = ['added', 'completed', 'deleted', 'due', 'estimate',
+                'has_due_time', 'has_start_time', 'id', 'postponed',
+                'priority', 'start']
+
 _TASK_COMMON = {
-    'lists': {
-        'list': ['id', {
-            'taskseries': ['created', 'id', 'modified', 'name',
-                           'source', {
-                'tags': [],
-                'participants': [],
-                'notes': [],
-                'task': ['added', 'completed', 'deleted', 'due',
-                         'estimate', 'has_due_time', 'id', 'postponed',
-                         'priority'],
-                },
-            ],
+    'list': ['id', {
+        'taskseries': [*_TASKSERIES_FIELDS, {
+            'tags': [],
+            'participants': [],
+            'notes': [],
+            'task': _TASK_FIELDS,
             },
         ],
-    },
+        },
+    ],
 }
 
 _TASK_TAGS = {
-    'lists': {
-        'list': ['id', {
-            'taskseries': ['created', 'id', 'modified', 'name',
-                           'source', {
-                'tags': {
-                    'tag': [],
-                },
-                'participants': [],
-                'notes': [],
-                'task': ['added', 'completed', 'deleted', 'due',
-                         'estimate', 'has_due_time', 'id', 'postponed',
-                         'priority'],
-                },
-            ],
+    'list': ['id', {
+        'taskseries': [*_TASKSERIES_FIELDS, {
+            'tags': {
+                'tag': [],
+            },
+            'participants': [],
+            'notes': [],
+            'task': _TASK_FIELDS,
             },
         ],
-    },
+        },
+    ],
 }
 
 _TASK_RRULE = {
-    'lists': {
-        'list': ['id', {
-            'taskseries': ['created', 'id', 'modified', 'name',
-                           'source', {
-                'rrule': ['every'],
-                'tags': [],
-                'participants': [],
-                'notes': [],
-                'task': ['added', 'completed', 'deleted', 'due',
-                         'estimate', 'has_due_time', 'id', 'postponed',
-                         'priority'],
-                },
-            ],
+    'list': ['id', {
+        'taskseries': [*_TASKSERIES_FIELDS, {
+            'rrule': ['every'],
+            'tags': [],
+            'participants': [],
+            'notes': [],
+            'task': _TASK_FIELDS,
             },
         ],
-    },
+        },
+    ],
 }
 
 _TASK_TAGS_RRULE = {
-    'lists': {
-        'list': ['id', {
-            'taskseries': ['created', 'id', 'modified', 'name',
-                           'source', {
-                'rrule': ['every'],
-                'tags': {
-                    'tag': [],
-                },
-                'participants': [],
-                'notes': [],
-                'task': ['added', 'completed', 'deleted', 'due',
-                         'estimate', 'has_due_time', 'id', 'postponed',
-                         'priority'],
-                },
-            ],
+    'list': ['id', {
+        'taskseries': [*_TASKSERIES_FIELDS, {
+            'rrule': ['every'],
+            'tags': {
+                'tag': [],
+            },
+            'participants': [],
+            'notes': [],
+            'task': _TASK_FIELDS,
             },
         ],
-    },
+        },
+    ],
+}
+
+_SCRIPT_COMMON = {
+    'script': ['code', 'created', 'id', 'modified', 'name'],
+}
+
+_SUBSCRIPTION_COMMON = {
+    'subscription': ['expires', 'format', 'id', 'pending', 'url', {
+        'topics': {
+            'topic': [],
+            },
+        },
+    ],
 }
 
 API_RESPONSE = {
@@ -268,25 +295,6 @@ API_RESPONSE = {
             },
         },
     },
-    'groups': {
-        'add': {
-            'group': ['id', 'name', {
-                'contacts': [],
-                },
-            ],
-        },
-        'addContact': [],
-        'delete': [],
-        'getList': {
-            'groups': {
-                'group': ['id', 'name', {
-                    'contact': ['id'],
-                    },
-                ],
-            },
-        },
-        'removeContact': [],
-    },
     'lists': {
         'add': _LIST_COMMON,
         'archive': _LIST_COMMON,
@@ -305,6 +313,18 @@ API_RESPONSE = {
                              'name', 'viewable', 'zoom'],
             },
         },
+    },
+    'push': {
+        'getSubscriptions': {
+            'subscriptions': _SUBSCRIPTION_COMMON,
+        },
+        'getTopics': {
+            'topics': {
+                'topic': [],
+            },
+        },
+        'subscribe': _SUBSCRIPTION_COMMON,
+        'unsubscribe': [],
     },
     'reflection': {
         'getMethodInfo': {
@@ -334,6 +354,19 @@ API_RESPONSE = {
             },
         },
     },
+    'scripts': {
+        'add': _SCRIPT_COMMON,
+        'delete': [],
+        'getList': {
+            'scripts': _SCRIPT_COMMON,
+        },
+        'run': {
+            'execution': ['id'],
+        },
+        'setCode': _SCRIPT_COMMON,
+        'setName': _SCRIPT_COMMON,
+        'setParams': _SCRIPT_COMMON,
+    },
     'settings': {
         'getList': {
             'settings': {
@@ -345,12 +378,21 @@ API_RESPONSE = {
             },
         },
     },
+    'tags': {
+        'getList': {
+            'tags': {
+                'tag': ['name'],
+            },
+        },
+    },
     'tasks': {
         'add': _TASK_COMMON,
         'addTags': _TASK_TAGS,
         'complete': _TASK_COMMON,
         'delete': _TASK_COMMON,
-        'getList': _TASK_COMMON,
+        'getList': {
+            'tasks': _TASK_COMMON,
+        },
         'movePriority': _TASK_COMMON,
         'moveTo': _TASK_TAGS,
         'postpone': _TASK_COMMON,
@@ -359,8 +401,10 @@ API_RESPONSE = {
         'setEstimate': _TASK_COMMON,
         'setLocation': _TASK_COMMON,
         'setName': _TASK_COMMON,
+        'setParentTask': _TASK_COMMON,
         'setPriority': _TASK_COMMON,
         'setRecurrence': _TASK_RRULE,
+        'setStartDate': _TASK_COMMON,
         'setTags': _TASK_TAGS_RRULE,
         'setURL': _TASK_COMMON,
         'uncomplete': _TASK_COMMON,

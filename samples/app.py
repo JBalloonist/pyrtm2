@@ -1,53 +1,45 @@
 #!/usr/bin/env python
-# simple app
+"""Command-line sample: list tasks due within the next week."""
+
+import sys
 
 from rtm import createRTM
 
-try:
-    from Tkinter import *
-except ImportError:
-    from tkinter import *
 
-def createApp(rtm):
+def getTasksDueWithinWeek(rtm):
     rspTasks = rtm.tasks.getList(filter='dueWithin:"1 week of today"')
     tasks = []
-    if hasattr(rspTasks.tasks, "list") and \
-       hasattr(rspTasks.tasks.list, "__getitem__"):
-        for l in rspTasks.tasks.list:
-            # XXX: taskseries *may* be a list
-            if isinstance(l.taskseries, (list, tuple)):
-                for t in l.taskseries:
-                    tasks.append(t.name)
-            else:
-                tasks.append(l.taskseries.name)
-    print(tasks)
-    if not tasks:
-        tasks.append('No tasks due within a week')
+    lists = rspTasks['tasks'].get('list', [])
+    if isinstance(lists, dict):
+        lists = [lists]
+    for lst in lists:
+        # XXX: taskseries *may* be a list
+        taskseries = lst.get('taskseries', [])
+        if isinstance(taskseries, dict):
+            taskseries = [taskseries]
+        for t in taskseries:
+            tasks.append(t['name'])
+    return tasks
 
-    root = Tk()
-    root.title('My tasks due within a week')
-    root.wm_attributes('-topmost', 1)
-    root.wm_attributes('-alpha', 0.9)
-    l = Label(text='\n'.join(tasks))
-    l.pack()
-    l.mainloop()
-
-def test(apiKey, secret, token=None):
-    rtm = createRTM(apiKey, secret, token)
-    createApp(rtm)
 
 def main():
-    import sys
     try:
         api_key, secret = sys.argv[1:3]
     except ValueError:
-        sys.stderr.write('Usage: rtm_appsample APIKEY SECRET [TOKEN]\n')
+        sys.stderr.write('Usage: app.py APIKEY SECRET [TOKEN]\n')
+        return
+
+    token = sys.argv[3] if len(sys.argv) > 3 else None
+    rtm = createRTM(api_key, secret, token)
+
+    tasks = getTasksDueWithinWeek(rtm)
+    if not tasks:
+        print('No tasks due within a week')
     else:
-        try:
-            token = sys.argv[3]
-        except IndexError:
-            token = None
-        test(api_key, secret, token)
+        print('Tasks due within a week:')
+        for task in tasks:
+            print(f'- {task}')
+
 
 if __name__ == '__main__':
     main()
