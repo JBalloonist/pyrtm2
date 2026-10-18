@@ -179,9 +179,6 @@ class TestRTM:
     def test_contacts_getList(self):
         self.assert_response('test_contacts_getList')
 
-    def test_groups_getList(self):
-        self.assert_response('test_groups_getList')
-
     def test_lists_getList(self):
         self.assert_response('test_lists_getList')
 

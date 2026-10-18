@@ -21,18 +21,6 @@ API = {
         'getList':
             [(), ()]
     },
-    'groups': {
-        'add':
-            [('timeline', 'group'), ()],
-        'addContact':
-            [('timeline', 'group_id', 'contact_id'), ()],
-        'delete':
-            [('timeline', 'group_id'), ()],
-        'getList':
-            [(), ()],
-        'removeContact':
-            [('timeline', 'group_id', 'contact_id'), ()],
-    },
     'lists': {
         'add':
             [('timeline', 'name',), ('filter',)],
@@ -72,13 +60,13 @@ API = {
     },
     'scripts': {
         'add':
-            [('timeline', 'name', 'code'), ()],
+            [('timeline', 'name', 'code'), ('script_params',)],
         'delete':
             [('timeline', 'script_id'), ()],
         'getList':
             [(), ('name',)],
         'run':
-            [('timeline', 'script_id'), ()],
+            [('timeline', 'script_id'), ('script_params',)],
         'setCode':
             [('timeline', 'script_id', 'code'), ()],
         'setName':
@@ -304,25 +292,6 @@ API_RESPONSE = {
                 'contact': ['fullname', 'id', 'username'],
             },
         },
-    },
-    'groups': {
-        'add': {
-            'group': ['id', 'name', {
-                'contacts': [],
-                },
-            ],
-        },
-        'addContact': [],
-        'delete': [],
-        'getList': {
-            'groups': {
-                'group': ['id', 'name', {
-                    'contact': ['id'],
-                    },
-                ],
-            },
-        },
-        'removeContact': [],
     },
     'lists': {
         'add': _LIST_COMMON,
