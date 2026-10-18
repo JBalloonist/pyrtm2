@@ -48,6 +48,41 @@ class TestRTMOffline:
                 assert isinstance(rargs, tuple), f'{prefix}.{name}'
                 assert isinstance(oargs, tuple), f'{prefix}.{name}'
 
+    def test_api_and_response_cover_same_methods(self):
+        assert RTM.API.keys() == RTM.API_RESPONSE.keys()
+        for prefix, methods in RTM.API.items():
+            assert methods.keys() == RTM.API_RESPONSE[prefix].keys(), prefix
+
+    @pytest.mark.parametrize('prefix, method, params', [
+        ('push', 'getSubscriptions', {}),
+        ('push', 'getTopics', {}),
+        ('push', 'subscribe', {'timeline': '1', 'url': 'https://x.example',
+                               'topics': 'task_created',
+                               'push_format': 'json'}),
+        ('push', 'unsubscribe', {'timeline': '1', 'subscription_id': '2'}),
+        ('scripts', 'add', {'timeline': '1', 'name': 'n', 'code': 'c'}),
+        ('scripts', 'delete', {'timeline': '1', 'script_id': '2'}),
+        ('scripts', 'getList', {'name': 'n'}),
+        ('scripts', 'run', {'timeline': '1', 'script_id': '2'}),
+        ('scripts', 'setCode', {'timeline': '1', 'script_id': '2',
+                                'code': 'c'}),
+        ('scripts', 'setName', {'timeline': '1', 'script_id': '2',
+                                'name': 'n'}),
+        ('tags', 'getList', {}),
+        ('tasks', 'setParentTask', {'timeline': '1', 'list_id': '2',
+                                    'taskseries_id': '3', 'task_id': '4',
+                                    'parent_task_id': '5'}),
+        ('tasks', 'setStartDate', {'timeline': '1', 'list_id': '2',
+                                   'taskseries_id': '3', 'task_id': '4',
+                                   'start': 'tomorrow', 'parse': '1'}),
+    ])
+    def test_new_methods_call_rtm(self, monkeypatch, prefix, method, params):
+        calls = self.mock_post(monkeypatch)
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            getattr(getattr(self.rtm, prefix), method)(**params)
+        assert calls[0]['data']['method'] == f'rtm.{prefix}.{method}'
+
     def test_set_default_list_accepts_timeline(self, monkeypatch):
         calls = self.mock_post(monkeypatch)
         with warnings.catch_warnings():
