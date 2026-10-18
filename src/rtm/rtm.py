@@ -4,6 +4,7 @@ __author__ = 'Sridhar Ratnakumar <http://purl.org/NET/srid/>'
 __all__ = (
     'API',
     'API_RESPONSE',
+    'as_list',
     'createRTM',
     'set_log_level',
 )
@@ -68,9 +69,12 @@ class RTM(object):
         "Get the parsed JSON response for the passed `params`."
         params['api_key'] = self.apiKey
         params['format'] = 'json'
+        params['v'] = '2'
         params['api_sig'] = self._sign(params)
 
-        response = requests.get(SERVICE_URL, params=params, timeout=30)
+        # POST keeps the api key and token out of the URL, so they don't
+        # show up in HTTPError messages or server logs
+        response = requests.post(SERVICE_URL, data=params, timeout=30)
         response.raise_for_status()
 
         LOG.debug("JSON response: \n%s", response.text)
@@ -157,6 +161,22 @@ def sortedItems(dictionary):
     keys.sort(key=str)
     for key in keys:
         yield key, dictionary[key]
+
+def as_list(value):
+    """ Normalise an RTM response container to a list.
+    RTM returns one item as a dict, several as a list and none as [] or None.
+    >>> as_list({'id': '1'})
+    [{'id': '1'}]
+    >>> as_list([{'id': '1'}, {'id': '2'}])
+    [{'id': '1'}, {'id': '2'}]
+    >>> as_list(None)
+    []
+    """
+    if not value:
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
 
 def createRTM(apiKey, secret, token=None):
     rtm = RTM(apiKey, secret, token)

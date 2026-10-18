@@ -1,6 +1,8 @@
 import os
+import warnings
 from configparser import RawConfigParser
 from os.path import dirname, join as pathjoin, realpath
+from unittest import mock
 
 import pytest
 
@@ -39,6 +41,52 @@ class TestRTMOffline:
     def test_missing_required_param_raises_type_error(self):
         with pytest.raises(TypeError):
             self.rtm.tasks.add()
+
+    def test_api_arg_specs_are_tuples(self):
+        for prefix, methods in RTM.API.items():
+            for name, (rargs, oargs) in methods.items():
+                assert isinstance(rargs, tuple), f'{prefix}.{name}'
+                assert isinstance(oargs, tuple), f'{prefix}.{name}'
+
+    def test_set_default_list_accepts_timeline(self, monkeypatch):
+        calls = self.mock_post(monkeypatch)
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            self.rtm.lists.setDefaultList(timeline='1', list_id='2')
+        assert calls[0]['data']['method'] == 'rtm.lists.setDefaultList'
+
+    def test_requests_are_posted_with_v2(self, monkeypatch):
+        calls = self.mock_post(monkeypatch)
+        self.rtm.lists.getList()
+        (call,) = calls
+        assert call['url'] == RTM.SERVICE_URL
+        assert call['data']['v'] == '2'
+        assert call['data']['auth_token'] == 'token'
+
+    def test_credentials_not_in_url(self, monkeypatch):
+        calls = self.mock_post(monkeypatch)
+        self.rtm.lists.getList()
+        assert 'apikey' not in calls[0]['url']
+        assert 'token' not in calls[0]['url']
+
+    def test_as_list(self):
+        assert RTM.as_list({'id': '1'}) == [{'id': '1'}]
+        assert RTM.as_list([{'id': '1'}]) == [{'id': '1'}]
+        assert RTM.as_list([]) == []
+        assert RTM.as_list(None) == []
+
+    @staticmethod
+    def mock_post(monkeypatch):
+        calls = []
+
+        def fake_post(url, data=None, timeout=None):
+            calls.append({'url': url, 'data': data})
+            response = mock.Mock()
+            response.json.return_value = {'rsp': {'stat': 'ok'}}
+            return response
+
+        monkeypatch.setattr(RTM.requests, 'post', fake_post)
+        return calls
 
 
 class TestRTM:

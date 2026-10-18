@@ -43,7 +43,7 @@ API = {
         'getList':
             [(), ()],
         'setDefaultList':
-            [('timeline'), ('list_id')],
+            [('timeline',), ('list_id',)],
         'setName':
             [('timeline', 'list_id', 'name'), ()],
         'unarchive':
