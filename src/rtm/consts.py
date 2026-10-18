@@ -204,69 +204,61 @@ _TASK_FIELDS = ['added', 'completed', 'deleted', 'due', 'estimate',
                 'priority', 'start']
 
 _TASK_COMMON = {
-    'lists': {
-        'list': ['id', {
-            'taskseries': [*_TASKSERIES_FIELDS, {
-                'tags': [],
-                'participants': [],
-                'notes': [],
-                'task': _TASK_FIELDS,
-                },
-            ],
+    'list': ['id', {
+        'taskseries': [*_TASKSERIES_FIELDS, {
+            'tags': [],
+            'participants': [],
+            'notes': [],
+            'task': _TASK_FIELDS,
             },
         ],
-    },
+        },
+    ],
 }
 
 _TASK_TAGS = {
-    'lists': {
-        'list': ['id', {
-            'taskseries': [*_TASKSERIES_FIELDS, {
-                'tags': {
-                    'tag': [],
-                },
-                'participants': [],
-                'notes': [],
-                'task': _TASK_FIELDS,
-                },
-            ],
+    'list': ['id', {
+        'taskseries': [*_TASKSERIES_FIELDS, {
+            'tags': {
+                'tag': [],
+            },
+            'participants': [],
+            'notes': [],
+            'task': _TASK_FIELDS,
             },
         ],
-    },
+        },
+    ],
 }
 
 _TASK_RRULE = {
-    'lists': {
-        'list': ['id', {
-            'taskseries': [*_TASKSERIES_FIELDS, {
-                'rrule': ['every'],
-                'tags': [],
-                'participants': [],
-                'notes': [],
-                'task': _TASK_FIELDS,
-                },
-            ],
+    'list': ['id', {
+        'taskseries': [*_TASKSERIES_FIELDS, {
+            'rrule': ['every'],
+            'tags': [],
+            'participants': [],
+            'notes': [],
+            'task': _TASK_FIELDS,
             },
         ],
-    },
+        },
+    ],
 }
 
 _TASK_TAGS_RRULE = {
-    'lists': {
-        'list': ['id', {
-            'taskseries': [*_TASKSERIES_FIELDS, {
-                'rrule': ['every'],
-                'tags': {
-                    'tag': [],
-                },
-                'participants': [],
-                'notes': [],
-                'task': _TASK_FIELDS,
-                },
-            ],
+    'list': ['id', {
+        'taskseries': [*_TASKSERIES_FIELDS, {
+            'rrule': ['every'],
+            'tags': {
+                'tag': [],
+            },
+            'participants': [],
+            'notes': [],
+            'task': _TASK_FIELDS,
             },
         ],
-    },
+        },
+    ],
 }
 
 _SCRIPT_COMMON = {
@@ -426,7 +418,9 @@ API_RESPONSE = {
         'addTags': _TASK_TAGS,
         'complete': _TASK_COMMON,
         'delete': _TASK_COMMON,
-        'getList': _TASK_COMMON,
+        'getList': {
+            'tasks': _TASK_COMMON,
+        },
         'movePriority': _TASK_COMMON,
         'moveTo': _TASK_TAGS,
         'postpone': _TASK_COMMON,

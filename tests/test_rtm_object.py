@@ -192,7 +192,7 @@ class TestRTM:
         self.assert_response('test_settings_getList')
 
     def test_tasks_getList(self):
-        self.assert_response('test_tasks_getList', 'lists')
+        self.assert_response('test_tasks_getList')
 
     def test_timezones_getList(self):
         self.assert_response('test_timezones_getList')
