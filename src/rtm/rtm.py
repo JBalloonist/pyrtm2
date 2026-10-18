@@ -52,6 +52,8 @@ class RTM(object):
         self.apiKey = apiKey
         self.secret = secret
         self.authInfo = AuthStateMachine(['frob', 'token'])
+        # reuse one connection across calls instead of reconnecting each time
+        self.session = requests.Session()
 
         # this enables one to do 'rtm.tasks.getList()', for example
         for prefix, methods in API.items():
@@ -74,7 +76,7 @@ class RTM(object):
 
         # POST keeps the api key and token out of the URL, so they don't
         # show up in HTTPError messages or server logs
-        response = requests.post(SERVICE_URL, data=params, timeout=30)
+        response = self.session.post(SERVICE_URL, data=params, timeout=30)
         response.raise_for_status()
 
         LOG.debug("JSON response: \n%s", response.text)

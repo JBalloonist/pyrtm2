@@ -77,21 +77,21 @@ class TestRTMOffline:
                                    'start': 'tomorrow', 'parse': '1'}),
     ])
     def test_new_methods_call_rtm(self, monkeypatch, prefix, method, params):
-        calls = self.mock_post(monkeypatch)
+        calls = self.mock_post(monkeypatch, self.rtm)
         with warnings.catch_warnings():
             warnings.simplefilter('error')
             getattr(getattr(self.rtm, prefix), method)(**params)
         assert calls[0]['data']['method'] == f'rtm.{prefix}.{method}'
 
     def test_set_default_list_accepts_timeline(self, monkeypatch):
-        calls = self.mock_post(monkeypatch)
+        calls = self.mock_post(monkeypatch, self.rtm)
         with warnings.catch_warnings():
             warnings.simplefilter('error')
             self.rtm.lists.setDefaultList(timeline='1', list_id='2')
         assert calls[0]['data']['method'] == 'rtm.lists.setDefaultList'
 
     def test_requests_are_posted_with_v2(self, monkeypatch):
-        calls = self.mock_post(monkeypatch)
+        calls = self.mock_post(monkeypatch, self.rtm)
         self.rtm.lists.getList()
         (call,) = calls
         assert call['url'] == RTM.SERVICE_URL
@@ -99,7 +99,7 @@ class TestRTMOffline:
         assert call['data']['auth_token'] == 'token'
 
     def test_credentials_not_in_url(self, monkeypatch):
-        calls = self.mock_post(monkeypatch)
+        calls = self.mock_post(monkeypatch, self.rtm)
         self.rtm.lists.getList()
         assert 'apikey' not in calls[0]['url']
         assert 'token' not in calls[0]['url']
@@ -111,7 +111,7 @@ class TestRTMOffline:
         assert RTM.as_list(None) == []
 
     @staticmethod
-    def mock_post(monkeypatch):
+    def mock_post(monkeypatch, rtm):
         calls = []
 
         def fake_post(url, data=None, timeout=None):
@@ -120,7 +120,7 @@ class TestRTMOffline:
             response.json.return_value = {'rsp': {'stat': 'ok'}}
             return response
 
-        monkeypatch.setattr(RTM.requests, 'post', fake_post)
+        monkeypatch.setattr(rtm.session, 'post', fake_post)
         return calls
 
 
