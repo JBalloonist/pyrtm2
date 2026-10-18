@@ -68,6 +68,8 @@ class TestRTMOffline:
                                 'code': 'c'}),
         ('scripts', 'setName', {'timeline': '1', 'script_id': '2',
                                 'name': 'n'}),
+        ('scripts', 'setParams', {'timeline': '1', 'script_id': '2',
+                                  'script_params': '{"p": "number"}'}),
         ('tags', 'getList', {}),
         ('tasks', 'setParentTask', {'timeline': '1', 'list_id': '2',
                                     'taskseries_id': '3', 'task_id': '4',

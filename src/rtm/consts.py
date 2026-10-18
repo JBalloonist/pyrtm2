@@ -70,7 +70,9 @@ API = {
         'setCode':
             [('timeline', 'script_id', 'code'), ()],
         'setName':
-            [('timeline', 'script_id', 'name'), ()]
+            [('timeline', 'script_id', 'name'), ()],
+        'setParams':
+            [('timeline', 'script_id'), ('script_params',)]
     },
     'settings': {
         'getList':
@@ -363,6 +365,7 @@ API_RESPONSE = {
         },
         'setCode': _SCRIPT_COMMON,
         'setName': _SCRIPT_COMMON,
+        'setParams': _SCRIPT_COMMON,
     },
     'settings': {
         'getList': {
